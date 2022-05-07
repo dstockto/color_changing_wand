@@ -125,20 +125,28 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
+// CRGBW 
 
+uint8_t color[5];
 
 void loop() {
+  color[0] = (uint8_t)'C';
   delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
+
+  color[1] = random(0, 255); // R
+  color[2] = random(0, 255); // G
+  color[3] = random(0, 255); // B
+  color[4] = random(0, 255); // W
 
   packetnum += 2;
   packetnum = packetnum % 7;
 
   char radiopacket[20] = "Blink #";
   itoa(packetnum, radiopacket+7, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
+  Serial.print("Sending "); Serial.printf("R%d G%d B%d W%d\n", color[1], color[2], color[3], color[4]);
   
   // Send a message!
-  rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
+  rf69.send((uint8_t *)color, 5);
   rf69.waitPacketSent();
 
   // Now wait for a reply
