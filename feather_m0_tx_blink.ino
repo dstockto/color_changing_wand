@@ -149,7 +149,7 @@ void loop() {
   packet_color[1] = random(0, 255); // R
   packet_color[2] = random(0, 255); // G
   packet_color[3] = random(0, 255); // B
-  packet_color[4] = random(0, 255); // W
+  packet_color[4] = 0; // W
 
   for (int i = 0; i < RING_LEDS; i++) {
     ring.setPixelColor(i, ring.Color(packet_color[1], packet_color[2], packet_color[3], packet_color[4]));   
