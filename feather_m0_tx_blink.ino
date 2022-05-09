@@ -133,7 +133,7 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 
   ring.begin();
-  ring.setPixelColor(0, ring.Color(255,0,0));
+  ring.setPixelColor(0, ring.Color(255,255,0,0));
   ring.show();
   ring.setBrightness(40);
 }
@@ -150,6 +150,11 @@ void loop() {
   packet_color[2] = random(0, 255); // G
   packet_color[3] = random(0, 255); // B
   packet_color[4] = random(0, 255); // W
+
+  for (int i = 0; i < RING_LEDS; i++) {
+    ring.setPixelColor(i, ring.Color(packet_color[1], packet_color[2], packet_color[3], packet_color[4]));   
+  }
+  ring.show();
 
   packetnum += 2;
   packetnum = packetnum % 7;
