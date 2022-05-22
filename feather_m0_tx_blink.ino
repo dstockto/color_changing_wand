@@ -8,6 +8,10 @@
 // Demonstrates the use of AES encryption, setting the frequency and modem 
 // configuration
 
+// TODO: change to use pushbutton to change color
+// TODO: use color sensor to pick new color instead of random
+// TODO: add on/off switch
+
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <Adafruit_NeoPixel.h>
