@@ -103,7 +103,7 @@ void setup()
 {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   Serial.begin(115200);
-  //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
   pinMode(LED, OUTPUT);
   pinMode(RFM69_RST, OUTPUT);
@@ -128,7 +128,7 @@ void setup()
   if (!rf69.setFrequency(RF69_FREQ)) {
     Serial.println("setFrequency failed");
   }
-
+Serial.println("Looking for color sensor");
   if (tcs.begin()) {
     Serial.println("Found sensor");
   } else {
@@ -172,6 +172,8 @@ void setup()
 uint8_t packet_color[5];
 boolean oldState = HIGH;
 
+uint16_t scanRed, scanGreen, scanBlue, clear;
+
 void loop() {
   packet_color[0] = (uint8_t)'C';
   delay(100);  // Wait .1 second between transmits, could also 'sleep' here!
@@ -183,9 +185,36 @@ void loop() {
     delay(20);
     newState = digitalRead(BUTTON_PIN);
     if (newState == LOW) {
-      packet_color[1] = random(0, 255); // R
-      packet_color[2] = random(0, 255); // G
-      packet_color[3] = random(0, 255); // B
+
+      tcs.setInterrupt(false); // scanner LED on
+      delay(60);
+      tcs.getRawData(&scanRed, &scanGreen, &scanBlue, &clear);
+      tcs.setInterrupt(true); // scanner LED off
+
+      uint32_t sum = scanRed + scanGreen + scanBlue;
+      float r, g, b;
+      r = scanRed; r /= sum;
+      g = scanGreen; g/=sum;
+      b = scanBlue; b /=sum;
+      r*=256; g *=256; b *= 256;
+
+      float largest = 0;
+      if (r > largest) {
+        largest = r;
+      }
+      if (g > largest) {
+        largest = g;
+      }
+      if (b > largest) {
+        largest = b;
+      }
+      float mult = 200.0/largest;
+      Serial.printf("Largest = %f, Mult = %f\n", largest, mult);
+
+      
+      packet_color[1] = gammatable[(int)(r*mult)]; //random(0, 255); // R
+      packet_color[2] = gammatable[(int)(g*mult)]; //random(0, 255); // G
+      packet_color[3] = gammatable[(int)(b*mult)]; //random(0, 255); // B
       packet_color[4] = 0; // W
 
       for (int i = 0; i < RING_LEDS; i++) {
