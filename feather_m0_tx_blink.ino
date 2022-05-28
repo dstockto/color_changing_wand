@@ -148,7 +148,7 @@ uint8_t packet_color[5];
 
 void loop() {
   packet_color[0] = (uint8_t)'C';
-  delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
+  delay(10000);  // Wait 1 second between transmits, could also 'sleep' here!
 
   packet_color[1] = random(0, 255); // R
   packet_color[2] = random(0, 255); // G
