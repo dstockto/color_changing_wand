@@ -15,14 +15,18 @@
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <Adafruit_NeoPixel.h>
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
 
 #define RING_PIN 12
 #define RING_LEDS 16
 #define BUTTON_PIN 11
 
 Adafruit_NeoPixel ring = Adafruit_NeoPixel(RING_LEDS, RING_PIN, NEO_GRBW);
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
 
 uint32_t color = ring.Color(75, 250, 100);
+byte gammatable[256];
 
 /************ Radio Setup ***************/
 
@@ -124,6 +128,24 @@ void setup()
   if (!rf69.setFrequency(RF69_FREQ)) {
     Serial.println("setFrequency failed");
   }
+
+  if (tcs.begin()) {
+    Serial.println("Found sensor");
+  } else {
+    Serial.println("No TCS34725 found ... check your connections");
+    while (1); // halt!
+  }
+
+  for (int i = 0; i < 256; i++) {
+    float x = i;
+    x /= 255;
+    x = pow(x, 2.5);
+    x *= 255;
+
+    gammatable[i] = x;
+    //Serial.println(gammatable[i]);
+  }
+
 
   // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
   // ishighpowermodule flag set like this:
