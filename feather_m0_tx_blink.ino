@@ -208,9 +208,7 @@ void loop() {
       if (b > largest) {
         largest = b;
       }
-      float mult = 200.0/largest;
-      Serial.printf("Largest = %f, Mult = %f\n", largest, mult);
-
+      float mult = 1.5;
       
       packet_color[1] = gammatable[(int)(r*mult)]; //random(0, 255); // R
       packet_color[2] = gammatable[(int)(g*mult)]; //random(0, 255); // G
