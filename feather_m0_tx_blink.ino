@@ -103,7 +103,7 @@ void setup()
 {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   Serial.begin(115200);
-  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+//  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
   pinMode(LED, OUTPUT);
   pinMode(RFM69_RST, OUTPUT);
