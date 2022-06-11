@@ -1,17 +1,3 @@
-// rf69 demo tx rx.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple messageing client
-// with the RH_RF69 class. RH_RF69 class does not provide for addressing or
-// reliability, so you should only use RH_RF69  if you do not need the higher
-// level messaging abilities.
-// It is designed to work with the other example rf69_server.
-// Demonstrates the use of AES encryption, setting the frequency and modem
-// configuration
-
-// TODO: change to use pushbutton to change color
-// TODO: use color sensor to pick new color instead of random
-// TODO: add on/off switch
-
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <Adafruit_NeoPixel.h>
@@ -79,92 +65,79 @@ byte gammatable[256];
 
 #endif
 
-
-/* Teensy 3.x w/wing
-  #define RFM69_RST     9   // "A"
-  #define RFM69_CS      10   // "B"
-  #define RFM69_IRQ     4    // "C"
-  #define RFM69_IRQN    digitalPinToInterrupt(RFM69_IRQ )
-*/
-
-/* WICED Feather w/wing
-  #define RFM69_RST     PA4     // "A"
-  #define RFM69_CS      PB4     // "B"
-  #define RFM69_IRQ     PA15    // "C"
-  #define RFM69_IRQN    RFM69_IRQ
-*/
-
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
-int16_t packetnum = 0;  // packet counter, we increment per xmission
+void setup() {
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    Serial.begin(115200);
 
-void setup()
-{
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  Serial.begin(115200);
+    // If you are connected to a computer and want to see all the messages, uncomment the line below. If you are not
+    // connected and you have the line below enabled, then your program will hang here.
 //  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
-  pinMode(LED, OUTPUT);
-  pinMode(RFM69_RST, OUTPUT);
-  digitalWrite(RFM69_RST, LOW);
+    pinMode(LED, OUTPUT);
+    pinMode(RFM69_RST, OUTPUT);
+    digitalWrite(RFM69_RST, LOW);
 
-  Serial.println("Feather RFM69 TX Test!");
-  Serial.println();
+    Serial.println("Feather RFM69 TX Test!");
+    Serial.println();
 
-  // manual reset
-  digitalWrite(RFM69_RST, HIGH);
-  delay(10);
-  digitalWrite(RFM69_RST, LOW);
-  delay(10);
+    // manual reset
+    digitalWrite(RFM69_RST, HIGH);
+    delay(10);
+    digitalWrite(RFM69_RST, LOW);
+    delay(10);
 
-  if (!rf69.init()) {
-    Serial.println("RFM69 radio init failed");
-    while (1);
-  }
-  Serial.println("RFM69 radio init OK!");
-  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
-  // No encryption
-  if (!rf69.setFrequency(RF69_FREQ)) {
-    Serial.println("setFrequency failed");
-  }
-Serial.println("Looking for color sensor");
-  if (tcs.begin()) {
-    Serial.println("Found sensor");
-  } else {
-    Serial.println("No TCS34725 found ... check your connections");
-    while (1); // halt!
-  }
+    if (!rf69.init()) {
+        Serial.println("RFM69 radio init failed");
+        while (1);
+    }
+    Serial.println("RFM69 radio init OK!");
+    // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
+    // No encryption
+    if (!rf69.setFrequency(RF69_FREQ)) {
+        Serial.println("setFrequency failed");
+    }
+    Serial.println("Looking for color sensor");
+    if (tcs.begin()) {
+        Serial.println("Found sensor");
+    } else {
+        Serial.println("No TCS34725 found ... check your connections");
+        while (1); // halt!
+    }
 
-  for (int i = 0; i < 256; i++) {
-    float x = i;
-    x /= 255;
-    x = pow(x, 2.5);
-    x *= 255;
+    for (int i = 0; i < 256; i++) {
+        float x = i;
+        x /= 255;
+        x = pow(x, 2.5);
+        x *= 255;
 
-    gammatable[i] = x;
-    //Serial.println(gammatable[i]);
-  }
+        gammatable[i] = x;
+    }
 
+    // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
+    // ishighpowermodule flag set like this:
+    rf69.setTxPower(20, true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
 
-  // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
-  // ishighpowermodule flag set like this:
-  rf69.setTxPower(20, true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
+    // The encryption key has to be the same as the one in the server
+    uint8_t key[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+    };
+    rf69.setEncryptionKey(key);
 
-  // The encryption key has to be the same as the one in the server
-  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
-                  };
-  rf69.setEncryptionKey(key);
+    pinMode(LED, OUTPUT);
 
-  pinMode(LED, OUTPUT);
+    Serial.print("RFM69 radio @");
+    Serial.print((int) RF69_FREQ);
+    Serial.println(" MHz");
 
-  Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
-
-  ring.begin();
-  ring.setPixelColor(0, ring.Color(255, 255, 0, 0));
-  ring.show();
-  ring.setBrightness(40);
+    ring.begin();
+    // When the wand is ready to go, there will be a single pixel turned on to yellow. Feel free to change this however
+    // you want.
+    ring.setPixelColor(0, ring.Color(255, 255, 0, 0));
+    ring.show();
+    ring.setBrightness(40);
 }
 
 // CRGBW
@@ -175,88 +148,82 @@ boolean oldState = HIGH;
 uint16_t scanRed, scanGreen, scanBlue, clear;
 
 void loop() {
-  packet_color[0] = (uint8_t)'C';
-  delay(100);  // Wait .1 second between transmits, could also 'sleep' here!
+    packet_color[0] = (uint8_t) 'C';
+    delay(100);  // Wait .1 second between transmits, could also 'sleep' here!
 
-  boolean newState = digitalRead(BUTTON_PIN);
+    boolean newState = digitalRead(BUTTON_PIN);
 
-  // TODO wire button and see if this bails from the loop
-  if ((newState == LOW) && (oldState == HIGH)) {
-    delay(20);
-    newState = digitalRead(BUTTON_PIN);
-    if (newState == LOW) {
+    if ((newState == LOW) && (oldState == HIGH)) {
+        // Debounce the button - it will be high and low really quickly when pushed because the switch literally bounces
+        // so we will wait 20ms to let it settle down and make sure we are still getting the same value
+        delay(20);
+        newState = digitalRead(BUTTON_PIN);
+        // LOW means the button is pushed because it's wired to ground
+        if (newState == LOW) {
+            tcs.setInterrupt(false); // scanner LED on
+            delay(60);
+            tcs.getRawData(&scanRed, &scanGreen, &scanBlue, &clear);
+            tcs.setInterrupt(true); // scanner LED off
 
-      tcs.setInterrupt(false); // scanner LED on
-      delay(60);
-      tcs.getRawData(&scanRed, &scanGreen, &scanBlue, &clear);
-      tcs.setInterrupt(true); // scanner LED off
+            uint32_t sum = scanRed + scanGreen + scanBlue;
+            float r, g, b;
+            r = scanRed;
+            r /= sum;
+            g = scanGreen;
+            g /= sum;
+            b = scanBlue;
+            b /= sum;
+            r *= 256;
+            g *= 256;
+            b *= 256;
 
-      uint32_t sum = scanRed + scanGreen + scanBlue;
-      float r, g, b;
-      r = scanRed; r /= sum;
-      g = scanGreen; g/=sum;
-      b = scanBlue; b /=sum;
-      r*=256; g *=256; b *= 256;
+            float mult = 1.5; // This "brightens" the color by about 50%
 
-      float largest = 0;
-      if (r > largest) {
-        largest = r;
-      }
-      if (g > largest) {
-        largest = g;
-      }
-      if (b > largest) {
-        largest = b;
-      }
-      float mult = 1.5;
-      
-      packet_color[1] = gammatable[(int)(r*mult)]; //random(0, 255); // R
-      packet_color[2] = gammatable[(int)(g*mult)]; //random(0, 255); // G
-      packet_color[3] = gammatable[(int)(b*mult)]; //random(0, 255); // B
-      packet_color[4] = 0; // W
+            packet_color[1] = gammatable[(int) (r * mult)]; // R
+            packet_color[2] = gammatable[(int) (g * mult)]; // G
+            packet_color[3] = gammatable[(int) (b * mult)]; // B
+            packet_color[4] = 0; // W - don't turn on the white part
 
-      for (int i = 0; i < RING_LEDS; i++) {
-        ring.setPixelColor(i, ring.Color(packet_color[1], packet_color[2], packet_color[3], packet_color[4]));
-      }
-      ring.show();
+            // Set the pixel ring to the color we got from the scanner
+            for (int i = 0; i < RING_LEDS; i++) {
+                ring.setPixelColor(i, ring.Color(packet_color[1], packet_color[2], packet_color[3], packet_color[4]));
+            }
+            ring.show();
 
-      packetnum += 2;
-      packetnum = packetnum % 7;
+            Serial.print("Sending ");
+            Serial.printf("R%d G%d B%d W%d\n", packet_color[1], packet_color[2], packet_color[3], packet_color[4]);
 
-      char radiopacket[20] = "Blink #";
-      itoa(packetnum, radiopacket + 7, 10);
-      Serial.print("Sending "); Serial.printf("R%d G%d B%d W%d\n", packet_color[1], packet_color[2], packet_color[3], packet_color[4]);
+            // Send a message! - Message looks like C<R><G><B> where C is literally the letter C and the <R>, <G> and <B>
+            // values are single byte values representing 0-255 for each color value
+            rf69.send((uint8_t *) packet_color, 5);
+            rf69.waitPacketSent();
 
-      // Send a message!
-      rf69.send((uint8_t *)packet_color, 5);
-      rf69.waitPacketSent();
+            // Now wait for a reply
+            uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+            uint8_t len = sizeof(buf);
 
-      // Now wait for a reply
-      uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-      uint8_t len = sizeof(buf);
-
-      if (rf69.waitAvailableTimeout(500))  {
-        // Should be a reply message for us now
-        if (rf69.recv(buf, &len)) {
-          Serial.print("Got a reply: ");
-          Serial.print((char*)buf);
-          Blink(LED, 50, packetnum); //blink LED 3 times, 50ms between blinks
-        } else {
-          Serial.println("Receive failed");
+            if (rf69.waitAvailableTimeout(500)) {
+                // Should be a reply message for us now
+                if (rf69.recv(buf, &len)) {
+                    Serial.print("Got a reply: ");
+                    Serial.print((char *) buf);
+                    Blink(LED, 50, packetnum); //blink LED 3 times, 50ms between blinks
+                } else {
+                    Serial.println("Receive failed");
+                }
+            } else {
+                Serial.println("No reply, is another RFM69 listening?");
+            }
         }
-      } else {
-        Serial.println("No reply, is another RFM69 listening?");
-      }
     }
-  }
-  oldState = newState;
+    oldState = newState;
 }
 
 void Blink(byte PIN, byte DELAY_MS, byte loops) {
-  for (byte i = 0; i < loops; i++)  {
-    digitalWrite(PIN, HIGH);
-    delay(DELAY_MS);
-    digitalWrite(PIN, LOW);
-    delay(DELAY_MS);
-  }
+    for (byte i = 0; i < loops; i++) {
+        digitalWrite(PIN, HIGH);
+        delay(DELAY_MS);
+        digitalWrite(PIN, LOW);
+        delay(DELAY_MS);
+    }
 }
