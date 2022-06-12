@@ -179,15 +179,6 @@ void loop() {
             Serial.println(scanBlue);
             
             float r, g, b, largest;
-//            r = scanRed;
-//            r /= sum;
-//            g = scanGreen;
-//            g /= sum;
-//            b = scanBlue;
-//            b /= sum;
-//            r *= 256;
-//            g *= 256;
-//            b *= 256;
             r = scanRed / 255;
             g = scanGreen / 255;
             b = scanBlue / 255;
@@ -199,14 +190,18 @@ void loop() {
               largest = b;
             }
             float  mult = 255.0 / largest;
-            
-     
 
-//            float mult = 1.0; // This "brightens" the color by about 50%
+            r *= mult;
+            g *= mult;
+            b *= mult;
 
-            packet_color[1] = gammatable[(int) (r * mult)]; // R
-            packet_color[2] = gammatable[(int) (g * mult)]; // G
-            packet_color[3] = gammatable[(int) (b * mult)]; // B
+            r = colorFix(r);
+            g = colorFix(g);
+            b = colorFix(b);
+
+            packet_color[1] = gammatable[(int) (r)]; // R
+            packet_color[2] = gammatable[(int) (g)]; // G
+            packet_color[3] = gammatable[(int) (b)]; // B
             packet_color[4] = 0; // W - don't turn on the white part
 
             // Set the pixel ring to the color we got from the scanner
@@ -245,6 +240,16 @@ void loop() {
     oldState = newState;
 }
 
+float colorFix(float c) {
+  float  threshold = 40;
+  if (c > 255 - threshold) { 
+    return 255;
+  } else if (c > 75) {
+    return 128;
+  }
+
+  return 0;
+}
 void Blink(byte PIN, byte DELAY_MS, byte loops) {
     for (byte i = 0; i < loops; i++) {
         digitalWrite(PIN, HIGH);
