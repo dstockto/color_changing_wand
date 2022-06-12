@@ -14,6 +14,7 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS3472
 uint32_t color = ring.Color(75, 250, 100);
 byte gammatable[256];
 
+char buff[50];
 /************ Radio Setup ***************/
 
 // Change to 434.0 or other frequency, must match RX's freq!
@@ -136,6 +137,7 @@ void setup() {
     // When the wand is ready to go, there will be a single pixel turned on to yellow. Feel free to change this however
     // you want.
     ring.setPixelColor(0, ring.Color(255, 255, 0, 0));
+    ring.setPixelColor(8, ring.Color(255, 255, 0, 0));
     ring.show();
     ring.setBrightness(40);
 }
@@ -166,22 +168,40 @@ void loop() {
             tcs.setInterrupt(true); // scanner LED off
 
             uint32_t sum = scanRed + scanGreen + scanBlue;
-            float r, g, b;
-            r = scanRed;
-            r /= sum;
-            g = scanGreen;
-            g /= sum;
-            b = scanBlue;
-            b /= sum;
-            r *= 256;
-            g *= 256;
-            b *= 256;
 
-            float mult = 1.5; // This "brightens" the color by about 50%
+            Serial.print("R");
+            Serial.println(scanRed);
 
-            packet_color[1] = gammatable[(int) (r * mult)]; // R
-            packet_color[2] = gammatable[(int) (g * mult)]; // G
-            packet_color[3] = gammatable[(int) (b * mult)]; // B
+            Serial.print("G");
+            Serial.println(scanGreen);
+
+            Serial.print("B");
+            Serial.println(scanBlue);
+            
+            float r, g, b, largest;
+            r = scanRed / 255;
+            g = scanGreen / 255;
+            b = scanBlue / 255;
+            largest = r;
+            if (g > largest) {
+              largest = g;
+            }
+            if (b > largest) {
+              largest = b;
+            }
+            float  mult = 255.0 / largest;
+
+            r *= mult;
+            g *= mult;
+            b *= mult;
+
+            r = colorFix(r);
+            g = colorFix(g);
+            b = colorFix(b);
+
+            packet_color[1] = gammatable[(int) (r)]; // R
+            packet_color[2] = gammatable[(int) (g)]; // G
+            packet_color[3] = gammatable[(int) (b)]; // B
             packet_color[4] = 0; // W - don't turn on the white part
 
             // Set the pixel ring to the color we got from the scanner
@@ -191,7 +211,8 @@ void loop() {
             ring.show();
 
             Serial.print("Sending ");
-            Serial.printf("R%d G%d B%d W%d\n", packet_color[1], packet_color[2], packet_color[3], packet_color[4]);
+            sprintf(buff, "R%d G%d B%d W%d\n", (int)packet_color[1], (int)packet_color[2], (int)packet_color[3], (int)packet_color[4]);
+            Serial.println(buff);
 
             // Send a message! - Message looks like C<R><G><B> where C is literally the letter C and the <R>, <G> and <B>
             // values are single byte values representing 0-255 for each color value
@@ -207,7 +228,7 @@ void loop() {
                 if (rf69.recv(buf, &len)) {
                     Serial.print("Got a reply: ");
                     Serial.print((char *) buf);
-                    Blink(LED, 50, packetnum); //blink LED 3 times, 50ms between blinks
+                    Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
                 } else {
                     Serial.println("Receive failed");
                 }
@@ -219,6 +240,16 @@ void loop() {
     oldState = newState;
 }
 
+float colorFix(float c) {
+  float  threshold = 40;
+  if (c > 255 - threshold) { 
+    return 255;
+  } else if (c > 75) {
+    return 128;
+  }
+
+  return 0;
+}
 void Blink(byte PIN, byte DELAY_MS, byte loops) {
     for (byte i = 0; i < loops; i++) {
         digitalWrite(PIN, HIGH);
